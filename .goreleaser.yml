@@ -41,6 +41,7 @@ brews:
       email: dev@afosto.com
 
     folder: Formula
+    token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
 
     homepage: "https://afosto.com/"
     description: "CLI tool for interaction with Afosto/IO"
