@@ -1,4 +1,4 @@
-module github.com/afosto/io-cli
+module github.com/afosto/cli
 
 go 1.13
 

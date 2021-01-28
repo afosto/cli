@@ -3,7 +3,10 @@ before:
     - go mod download
 
 builds:
-  - env:
+  - id: afosto
+    main: ./cmd/afosto/afosto.go
+    binary: afosto
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -28,10 +31,10 @@ release:
   github:
     owner: afosto
     name: cli
-  name_template: "{{.ProjectName}}-v{{.Version}} {{.Env.USER}}"
+  name_template: "afosto-{{.ProjectName}}-v{{.Version}}"
 
 brews:
-  - name: afosto-cli
+  - name: afosto
     tap:
       owner: afosto
       name: homebrew-tap
@@ -43,7 +46,8 @@ brews:
 
     folder: Formula
 
-
     homepage: "https://afosto.com/"
     description: "CLI tool for interaction with Afosto/IO"
     license: "Apache-2.0"
+    test: |
+      afosto version

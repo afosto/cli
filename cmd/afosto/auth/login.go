@@ -1,20 +1,14 @@
-package cmd
+package auth
 
 import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gosuri/uilive"
 	"github.com/pkg/browser"
-	"github.com/spf13/cobra"
 	"log"
 	"net/http"
-	"os"
 	"sync"
 	"time"
-)
-
-var (
-	rootCmd = &cobra.Command{}
 )
 
 type tenant struct {
@@ -41,24 +35,7 @@ type loginResource struct {
 	user   user
 }
 
-func init() {
-	rootCmd.AddCommand(&cobra.Command{
-		Use:   "login",
-		Short: "Connect with Afosto/IO",
-		Long:  `Connect with Afosto`,
-		Run: func(cmd *cobra.Command, args []string) {
-			login()
-		}})
-
-}
-
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
-	}
-}
-
-func login() {
+func Login() {
 	listener := &loginResource{
 		client: &http.Client{Timeout: time.Second * 5},
 	}
@@ -77,7 +54,7 @@ func (listener *loginResource) searchClient() (*client, error) {
 func openBrowser() {
 	redirectURL := "http://localhost:8888/return"
 	clientID := "51403354ded11942d7195c66b9e81f71b74f56cd8adc539277823e179da8"
-	url := "https://login.afosto.io/authorize?client_id=" + clientID + "&redirect_uri=" +
+	url := "https://auth.afosto.io/authorize?client_id=" + clientID + "&redirect_uri=" +
 		redirectURL + "&response_type=token%20id_token&scope=openid%20email%20profile%20app%3Aintegrations%3Aread%20app%3Aintegrations%3Awrite"
 
 	err := browser.OpenURL(url)
