@@ -34,7 +34,7 @@ release:
   name_template: "afosto-{{.ProjectName}}-v{{.Version}}"
 
 brews:
-  - name: afosto
+  - name: afosto-cli
     tap:
       owner: afosto
       name: homebrew-tap
