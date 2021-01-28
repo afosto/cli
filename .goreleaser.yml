@@ -35,13 +35,14 @@ brews:
     tap:
       owner: afosto
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
 
     commit_author:
       name: goreleaserbot
       email: dev@afosto.com
 
     folder: Formula
-    token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+
 
     homepage: "https://afosto.com/"
     description: "CLI tool for interaction with Afosto/IO"
