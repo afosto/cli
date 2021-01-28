@@ -18,7 +18,7 @@ var (
 func init() {
 	rootCmd.AddCommand(
 		&cobra.Command{
-			Use:   "auth",
+			Use:   "login",
 			Short: "Connect with Afosto/IO",
 			Long:  `Connect with Afosto`,
 			Run: func(cmd *cobra.Command, args []string) {

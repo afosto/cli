@@ -54,7 +54,7 @@ func (listener *loginResource) searchClient() (*client, error) {
 func openBrowser() {
 	redirectURL := "http://localhost:8888/return"
 	clientID := "51403354ded11942d7195c66b9e81f71b74f56cd8adc539277823e179da8"
-	url := "https://auth.afosto.io/authorize?client_id=" + clientID + "&redirect_uri=" +
+	url := "https://login.afosto.io/authorize?client_id=" + clientID + "&redirect_uri=" +
 		redirectURL + "&response_type=token%20id_token&scope=openid%20email%20profile%20app%3Aintegrations%3Aread%20app%3Aintegrations%3Awrite"
 
 	err := browser.OpenURL(url)
