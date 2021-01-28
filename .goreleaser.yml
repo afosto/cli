@@ -51,3 +51,6 @@ brews:
     license: "Apache-2.0"
     test: |
       afosto version
+    install: |
+      bin.install "afosto"
+    caveats: "Thanks for installing the Afosto CLI! If you have any feedback, please open up an issue at github.com/afosto/cli. Run `afosto login` to authenticate with the API."
