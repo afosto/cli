@@ -1,24 +1,14 @@
-env:
-  - GO111MODULE=on
-  - GOPROXY=https://gocenter.io
 before:
   hooks:
     - go mod download
 
 builds:
-  - id: afosto-cli
-    main: main.go
-    binary: afosto-cli
+  - env:
+      - CGO_ENABLED=0
     goos:
       - linux
-      - darwin
       - windows
-    goarch:
-      - 386
-      - amd64
-      - arm
-      - arm64
-    mod_timestamp: '{{ .CommitTimestamp }}'
+      - darwin
 
 archives:
   - replacements:
@@ -27,14 +17,17 @@ archives:
       windows: Windows
       386: i386
       amd64: x86_64
-    format_overrides:
-      - goos: windows
-        format: zip
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
 
 release:
   github:
     owner: afosto
-    name: io-cli
+    name: afosto-cli
   name_template: "{{.ProjectName}}-v{{.Version}} {{.Env.USER}}"
 
 brews:
@@ -42,12 +35,13 @@ brews:
     tap:
       owner: afosto
       name: homebrew-tap
+
     commit_author:
-      name: GoRelaser
+      name: goreleaserbot
       email: dev@afosto.com
+
     folder: Formula
-    homepage: https://github.com/afosto/cli
-    description: "Afosto/IO CLI tool"
-    skip_upload: false
-    test: |-
-      io-cli version
+
+    homepage: "https://afosto.com/"
+    description: "CLI tool for interaction with Afosto/IO"
+    license: "Apache-2.0"
