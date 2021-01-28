@@ -27,7 +27,7 @@ snapshot:
 release:
   github:
     owner: afosto
-    name: afosto-cli
+    name: cli
   name_template: "{{.ProjectName}}-v{{.Version}} {{.Env.USER}}"
 
 brews:
