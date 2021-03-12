@@ -140,6 +140,7 @@ func (ds *developmentServer) render(w http.ResponseWriter, req *http.Request) {
 				},
 			},
 		}
+		templateData["vars"] = entry.Vars
 		templateData["data"] = result.Data
 		templateData["config"] = map[string]string{
 			"asset_path": "http://" + ds.server.Addr + "/assets",
