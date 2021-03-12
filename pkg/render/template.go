@@ -16,7 +16,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 )
@@ -180,18 +179,19 @@ func (ds *developmentServer) index(w http.ResponseWriter, req *http.Request) {
 		logging.Log.Error(err)
 	}
 
-	fp := path.Join("templates", "index.html")
-	tmpl, err := template.ParseFiles(fp)
+	index, err := template.New("items").Parse("<html>\n<body>\n{{ range .Entries }}\n<li><a href=\"/render/{{ .Category }}/{{ .Path }}\">/{{ .Category }}/{{ .Path }}</a></li>\n{{ end }}\n</body>\n</html>")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logging.Log.Error(err)
 		return
 	}
 
-	if err := tmpl.Execute(w, map[string]interface{}{
+	if err := index.Execute(w, map[string]interface{}{
 		"Entries": ds.entries,
 	}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logging.Log.Error(err)
+		return
 	}
+
 }
 
 func (ds *developmentServer) serveAsset(w http.ResponseWriter, req *http.Request) {
