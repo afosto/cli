@@ -50,6 +50,10 @@ func GetDevelopmentServer(hostname string, port int, path string, user *data.Use
 	if err != nil {
 		return nil, ErrorPongoLoader
 	}
+	err = loader.SetBaseDir(filepath.Dir(path))
+	if err != nil {
+		return nil, ErrorPongoLoader
+	}
 
 	devServer := &developmentServer{
 		hostname:       hostname,
