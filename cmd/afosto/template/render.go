@@ -15,7 +15,7 @@ import (
 func GetCommands() []*cobra.Command {
 	renderCmd := &cobra.Command{
 		Use:   "render",
-		Short: "Render templates",
+		Short: "Render template",
 		Long:  `Start the local preview service`,
 		Run: func(cmd *cobra.Command, args []string) {
 			Render(cmd, args)
