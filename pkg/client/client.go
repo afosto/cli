@@ -61,6 +61,7 @@ func GetAuthorizationURL() string {
 		"odr:coupons:read",
 		"odr:invoices:read",
 		"rel:contacts:read",
+		"rel:identity:read",
 	}
 
 	return fmt.Sprintf("%s?client_id=%s&redirect_uri=%s&response_type=token+id_token&scope=%s",
