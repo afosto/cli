@@ -50,7 +50,17 @@ func GetAuthorizationURL() string {
 		"openid",
 		"email",
 		"profile",
+		"cnt:index:read",
+		"iam:users:read",
+		"iam:roles:read",
 		"iam:tenants:read",
+		"lcs:locations:read",
+		"lcs:handling:read",
+		"lcs:shipments:read",
+		"odr:orders:read",
+		"odr:coupons:read",
+		"odr:invoices:read",
+		"rel:contacts:read",
 	}
 
 	return fmt.Sprintf("%s?client_id=%s&redirect_uri=%s&response_type=token+id_token&scope=%s",
