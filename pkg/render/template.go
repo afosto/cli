@@ -167,6 +167,13 @@ func (ds *developmentServer) render(w http.ResponseWriter, req *http.Request) {
 		logging.Log.WithField("input", entry.TemplatePath).Debug("rendering template entry")
 
 		w.Header().Set("content-type", "text/html")
+
+		defer func() {
+			if r := recover(); r != nil {
+				w.Write([]byte(fmt.Sprintf("template error: %v", r)))
+			}
+		}()
+
 		err = tpl.ExecuteWriter(templateData, w)
 		if err != nil {
 			logging.Log.Error(err)
