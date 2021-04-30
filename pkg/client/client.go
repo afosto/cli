@@ -45,25 +45,7 @@ type QueryError struct {
 	Path    []string `json:"path"`
 }
 
-func GetAuthorizationURL() string {
-	scopes := []string{
-		"openid",
-		"email",
-		"profile",
-		"cnt:index:read",
-		"iam:users:read",
-		"iam:roles:read",
-		"iam:tenants:read",
-		"lcs:locations:read",
-		"lcs:handling:read",
-		"lcs:shipments:read",
-		"odr:orders:read",
-		"odr:coupons:read",
-		"odr:invoices:read",
-		"rel:contacts:read",
-		"rel:identity:read",
-	}
-
+func GetAuthorizationURL(scopes []string) string {
 	return fmt.Sprintf("%s?client_id=%s&redirect_uri=%s&response_type=token+id_token&scope=%s",
 		BaseAuthorizationURL, OauthClientID, url.QueryEscape(RedirectURL), url.QueryEscape(strings.Join(scopes, " ")))
 }

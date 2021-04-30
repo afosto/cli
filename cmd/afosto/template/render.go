@@ -30,7 +30,23 @@ func GetCommands() []*cobra.Command {
 func Render(cmd *cobra.Command, args []string) {
 	user := auth.GetUser()
 	if user == nil {
-		user = auth.GetImplicitUser()
+		user = auth.GetImplicitUser([]string{
+			"openid",
+			"email",
+			"profile",
+			"cnt:index:read",
+			"iam:users:read",
+			"iam:roles:read",
+			"iam:tenants:read",
+			"lcs:locations:read",
+			"lcs:handling:read",
+			"lcs:shipments:read",
+			"odr:orders:read",
+			"odr:coupons:read",
+			"odr:invoices:read",
+			"rel:contacts:read",
+			"rel:identity:read",
+		})
 	}
 	port, err := cmd.Flags().GetInt("port")
 	if err != nil {

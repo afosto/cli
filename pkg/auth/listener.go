@@ -27,8 +27,8 @@ func GetUser() *data.User {
 	return user
 }
 
-func GetImplicitUser() *data.User {
-	err := browser.OpenURL(client.GetAuthorizationURL())
+func GetImplicitUser(permissions []string) *data.User {
+	err := browser.OpenURL(client.GetAuthorizationURL(permissions))
 	if err != nil {
 		logging.Log.Fatal("could not call browser")
 	}
