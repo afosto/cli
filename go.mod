@@ -6,6 +6,7 @@ require (
 	github.com/dghubble/sling v1.3.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/flosch/pongo2/v4 v4.0.2
+	github.com/gen2brain/dlgs v0.0.0-20210406143744-f512297a108e
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/leekchan/accounting v1.0.0

@@ -5,6 +5,7 @@ import (
 	"github.com/afosto/cli/pkg/auth"
 	"github.com/afosto/cli/pkg/client"
 	"github.com/afosto/cli/pkg/logging"
+	"github.com/gen2brain/dlgs"
 	"github.com/spf13/cobra"
 	"io"
 	"log"
@@ -20,8 +21,6 @@ var _ io.Reader = (*os.File)(nil)
 
 func GetCommands() []*cobra.Command {
 
-	dir, _ := os.Getwd()
-
 	renderCmd := &cobra.Command{
 		Use:   "upload",
 		Short: "Upload template",
@@ -31,25 +30,13 @@ func GetCommands() []*cobra.Command {
 			upload(cmd, args)
 		}}
 
-	renderCmd.Flags().StringP("source", "s", dir, "")
-	renderCmd.Flags().StringP("destination", "d", "/uploads/", "")
+	renderCmd.Flags().StringP("source", "s", "", "")
+	renderCmd.Flags().StringP("destination", "d", "", "")
 
 	return []*cobra.Command{renderCmd}
 }
 
 func upload(cmd *cobra.Command, args []string) {
-	source, err := cmd.Flags().GetString("source")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	destination, err := cmd.Flags().GetString("destination")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	user := auth.GetUser()
 	if user == nil {
 		user = auth.GetImplicitUser([]string{
@@ -61,6 +48,46 @@ func upload(cmd *cobra.Command, args []string) {
 		})
 	}
 	ctx := context.WithValue(context.Background(), client.Jwt, user.GetAccessToken())
+
+	source, err := cmd.Flags().GetString("source")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if source == "" {
+		selectedSource, isSuccessfull, err := dlgs.File("Select directory to upload", "", true)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if !isSuccessfull {
+			log.Fatal("failed to select a directory")
+		}
+
+		source = selectedSource
+	}
+
+	destination, err := cmd.Flags().GetString("destination")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if destination == "" {
+		enteredDestination, isSuccessfull, err := dlgs.Entry("enter the path to upload", "enter the directory to upload to", "/uploads/")
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if !isSuccessfull {
+			log.Fatal("failed to select a directory")
+		}
+
+		destination = enteredDestination
+	}
 
 	fileClient := client.NewFileClient()
 	queue := make(chan string, 25)
