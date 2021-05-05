@@ -1,4 +1,4 @@
-package upload
+package files
 
 import (
 	"github.com/afosto/cli/pkg/auth"
@@ -23,7 +23,7 @@ func GetCommands() []*cobra.Command {
 		Use:   "upload",
 		Short: "Upload files",
 
-		Long: `Upload files to the Afosto file storage`,
+		Long: `Upload files to Afosto file storage`,
 		Run: func(cmd *cobra.Command, args []string) {
 			upload(cmd, args)
 		}}
@@ -31,7 +31,19 @@ func GetCommands() []*cobra.Command {
 	uploadCmd.Flags().StringP("source", "s", "", "")
 	uploadCmd.Flags().StringP("destination", "d", "", "")
 
-	return []*cobra.Command{uploadCmd}
+	downloadCmd := &cobra.Command{
+		Use:   "download",
+		Short: "Download files",
+
+		Long: `Download files from Afosto file storage`,
+		Run: func(cmd *cobra.Command, args []string) {
+			download(cmd, args)
+		}}
+
+	downloadCmd.Flags().StringP("source", "s", "", "")
+	downloadCmd.Flags().StringP("destination", "d", "", "")
+
+	return []*cobra.Command{uploadCmd, downloadCmd}
 }
 
 func upload(cmd *cobra.Command, args []string) {
