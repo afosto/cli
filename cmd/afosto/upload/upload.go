@@ -1,7 +1,6 @@
 package upload
 
 import (
-	"context"
 	"github.com/afosto/cli/pkg/auth"
 	"github.com/afosto/cli/pkg/client"
 	"github.com/afosto/cli/pkg/logging"
@@ -20,20 +19,19 @@ import (
 var _ io.Reader = (*os.File)(nil)
 
 func GetCommands() []*cobra.Command {
-
-	renderCmd := &cobra.Command{
+	uploadCmd := &cobra.Command{
 		Use:   "upload",
-		Short: "Upload template",
+		Short: "Upload files",
 
-		Long: `Start the local preview service`,
+		Long: `Upload files to the Afosto file storage`,
 		Run: func(cmd *cobra.Command, args []string) {
 			upload(cmd, args)
 		}}
 
-	renderCmd.Flags().StringP("source", "s", "", "")
-	renderCmd.Flags().StringP("destination", "d", "", "")
+	uploadCmd.Flags().StringP("source", "s", "", "")
+	uploadCmd.Flags().StringP("destination", "d", "", "")
 
-	return []*cobra.Command{renderCmd}
+	return []*cobra.Command{uploadCmd}
 }
 
 func upload(cmd *cobra.Command, args []string) {
@@ -47,49 +45,39 @@ func upload(cmd *cobra.Command, args []string) {
 			"cnt:files:write",
 		})
 	}
-	ctx := context.WithValue(context.Background(), client.Jwt, user.GetAccessToken())
+
+	ac := client.GetClient(user.TenantID, user.GetAccessToken())
 
 	source, err := cmd.Flags().GetString("source")
-
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	if source == "" {
-		selectedSource, isSuccessfull, err := dlgs.File("Select directory to upload", "", true)
-
+		selectedSource, ok, err := dlgs.File("Select directory to upload", "", true)
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		if !isSuccessfull {
+		if !ok {
 			log.Fatal("failed to select a directory")
 		}
-
 		source = selectedSource
 	}
 
 	destination, err := cmd.Flags().GetString("destination")
-
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	if destination == "" {
-		enteredDestination, isSuccessfull, err := dlgs.Entry("enter the path to upload", "enter the directory to upload to", "/uploads/")
-
+		enteredDestination, ok, err := dlgs.Entry("enter the path to upload", "enter the directory to upload to", "/uploads/")
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		if !isSuccessfull {
+		if !ok {
 			log.Fatal("failed to select a directory")
 		}
-
 		destination = enteredDestination
 	}
 
-	fileClient := client.NewFileClient()
 	queue := make(chan string, 25)
 	uploader := sync.WaitGroup{}
 	matcher := regexp.MustCompile(".*(jpe?g|png|svg|css|csv|js|txt|doc|eot|json|xls|xlsx|pdf|xml|mp4|mov|zip|md)$")
@@ -97,42 +85,29 @@ func upload(cmd *cobra.Command, args []string) {
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go func() {
 			for path := range queue {
-				file1, err := os.Open(path)
-				if err != nil {
-					logging.Log.Warnf("✗ could not open `%s`", path)
+
+				trimmedPath := path
+				if idx := strings.LastIndex(trimmedPath, "/"); idx != -1 {
+					trimmedPath = trimmedPath[0 : idx+1]
 				}
 
-				filePath := path
-
-				if idx := strings.LastIndex(filePath, "/"); idx != -1 {
-					filePath = filePath[0 : idx+1]
-				}
-
-				relativePath := strings.TrimLeft(filePath, source)
-
+				relativePath := strings.TrimLeft(trimmedPath, source)
 				replacer := strings.NewReplacer("//", "/")
-
 				destinationDir := replacer.Replace(strings.Join([]string{destination, relativePath}, "/"))
 
-				//
-				finfo, err := file1.Stat()
-				if err != nil {
-					logging.Log.Warnf("✗ could not get stats of `%s`", path)
-				}
-
-				signature, err := fileClient.GetPublicSignature(ctx, destinationDir, "upsert")
+				signature, err := ac.GetSignature(destinationDir, "upsert")
 				if err != nil {
 					logging.Log.Warnf("✗ failed to get a signature url for  `%s`", destinationDir)
+					return
 				}
 
-				file, err := fileClient.Upload(ctx, file1, finfo.Name(), signature)
+				file, err := ac.Upload(path, filepath.Base(path), signature)
 				if err != nil {
 					logging.Log.Errorf("✗ failed to upload  `%s`", path)
 				} else {
 					logging.Log.Infof("✔ Uploaded `%s` on url `%s`", file.Filename, file.Url)
 				}
 				uploader.Done()
-				file1.Close()
 			}
 
 		}()
@@ -147,7 +122,6 @@ func upload(cmd *cobra.Command, args []string) {
 			if info.IsDir() {
 				return nil
 			}
-
 			if !matcher.MatchString(path) {
 				logging.Log.Warnf("✗ invalid suffix for `%s`", path)
 			}
@@ -155,8 +129,6 @@ func upload(cmd *cobra.Command, args []string) {
 			uploader.Add(1)
 			queue <- path
 			logging.Log.Infof("✔ added to queue `%s` ", path)
-
-			//fmt.Println(path)
 
 			return nil
 		})
@@ -166,6 +138,5 @@ func upload(cmd *cobra.Command, args []string) {
 	}
 
 	uploader.Wait()
-
 	logging.Log.Info("✔ Finished uploading all files")
 }

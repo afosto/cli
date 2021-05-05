@@ -13,11 +13,11 @@ import (
 )
 
 func init() {
-	pongo2.RegisterFilter("price", filterPrice)
-	pongo2.RegisterFilter("sort", filterSort)
-	pongo2.ReplaceFilter("date", filterDate)
-	pongo2.RegisterFilter("keys", filterKeys)
-	pongo2.RegisterFilter("map", filterMap)
+	_ = pongo2.RegisterFilter("price", filterPrice)
+	_ = pongo2.RegisterFilter("sort", filterSort)
+	_ = pongo2.ReplaceFilter("date", filterDate)
+	_ = pongo2.RegisterFilter("keys", filterKeys)
+	_ = pongo2.RegisterFilter("map", filterMap)
 }
 
 func filterPrice(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {

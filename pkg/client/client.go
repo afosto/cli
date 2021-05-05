@@ -3,11 +3,18 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/afosto/cli/pkg/data"
+	"github.com/afosto/cli/pkg/logging"
+	"github.com/patrickmn/go-cache"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -26,6 +33,7 @@ var (
 type AfostoClient struct {
 	client      *http.Client
 	tenantID    string
+	c           *cache.Cache
 	accessToken string
 }
 
@@ -58,6 +66,7 @@ func GetClient(tenantID string, accessToken string) *AfostoClient {
 			client: &http.Client{
 				Timeout: time.Second * 5,
 			},
+			c: cache.New(time.Minute*5, time.Minute),
 		}
 	}
 
@@ -65,7 +74,7 @@ func GetClient(tenantID string, accessToken string) *AfostoClient {
 }
 
 func (ac *AfostoClient) GetTenant() (*data.Tenant, error) {
-	b, err := ac.request("GET", "iam/tenants/"+ac.tenantID, nil)
+	b, err := ac.request("GET", "iam/tenants/"+ac.tenantID, nil, "application/json")
 	if err != nil {
 		return nil, err
 	}
@@ -77,12 +86,87 @@ func (ac *AfostoClient) GetTenant() (*data.Tenant, error) {
 
 }
 
+func (ac *AfostoClient) GetSignature(dir string, method string) (string, error) {
+	tenant, err := ac.GetTenant()
+	if err != nil {
+		return "", err
+	}
+	result, ok := ac.c.Get(tenant.ID + dir)
+	var signature string
+	if !ok {
+		signatureRequest := struct {
+			IsPublic bool              `json:"is_public"`
+			Path     string            `json:"path"`
+			IsListed bool              `json:"is_listed"`
+			Method   string            `json:"method"`
+			Metadata map[string]string `json:"metadata"`
+		}{
+			IsPublic: false,
+			IsListed: true,
+			Path:     dir,
+			Method:   method,
+		}
+		resultData, err := ac.request("POST", "cnt/files/signature", signatureRequest, "application/json")
+		signatureResponse := data.Signature{}
+
+		err = json.Unmarshal(resultData, &signatureResponse)
+		if err != nil {
+			return "", err
+		}
+
+		signature = signatureResponse.Signature
+		ac.c.Set(tenant.ID+dir, signature, cache.DefaultExpiration)
+
+	} else {
+		signature = result.(string)
+	}
+	return signature, nil
+}
+
+func (ac *AfostoClient) Upload(sourceFilePath string, labelFilename string, signature string) (*data.File, error) {
+	file, err := os.Open(sourceFilePath)
+	if err != nil {
+		logging.Log.Error(err)
+		return nil, err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", labelFilename)
+	if err != nil {
+		logging.Log.Error(err)
+		return nil, err
+	}
+	_, _ = io.Copy(part, file)
+	_ = writer.Close()
+
+	result, err := ac.request("POST", "cnt/files/upload/"+signature, body, writer.FormDataContentType())
+	if err != nil {
+		logging.Log.Error(err)
+		return nil, err
+	}
+	var fileResponse []data.File
+	err = json.Unmarshal(result, &fileResponse)
+	if err != nil {
+		logging.Log.Error(err)
+		return nil, err
+	}
+
+	if len(fileResponse) > 0 {
+		return &fileResponse[0], nil
+	}
+
+	return nil, errors.New("got wrong response")
+
+}
+
 func (ac *AfostoClient) Query(query string, parameters interface{}) (*QueryResult, error) {
 	b, err := ac.request("POST", "gql", Query{
 		OperationName: nil,
 		Query:         query,
 		Variables:     parameters,
-	})
+	}, "application/json")
 	if err != nil {
 		return nil, err
 	}
@@ -94,24 +178,31 @@ func (ac *AfostoClient) Query(query string, parameters interface{}) (*QueryResul
 
 }
 
-func (ac *AfostoClient) request(method string, path string, payload interface{}) ([]byte, error) {
+func (ac *AfostoClient) request(method string, path string, payload interface{}, contentType string) ([]byte, error) {
 	var request *http.Request
 	var err error
-
 	if payload == nil {
 		request, err = http.NewRequest(method, fmt.Sprintf("%s/%s", BaseApiUrl, path), nil)
 	} else {
-		b, err := json.Marshal(payload)
-		if err != nil {
-			return nil, err
+		switch payload.(type) {
+		case *bytes.Buffer:
+			request, err = http.NewRequest(method, fmt.Sprintf("%s/%s", BaseApiUrl, path), payload.(*bytes.Buffer))
+		case interface{}:
+			b, err := json.Marshal(payload)
+			if err != nil {
+				return nil, err
+			}
+			request, err = http.NewRequest(method, fmt.Sprintf("%s/%s", BaseApiUrl, path), bytes.NewReader(b))
+		default:
+			logging.Log.Error("could not build request for " + reflect.TypeOf(payload).String())
+			return nil, errors.New("invalid request payload")
 		}
-		request, err = http.NewRequest(method, fmt.Sprintf("%s/%s", BaseApiUrl, path), bytes.NewReader(b))
 	}
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("authorization", "Bearer "+ac.accessToken)
-	request.Header.Set("content-type", "application/json")
+	request.Header.Set("content-type", contentType)
 
 	res, err := ac.client.Do(request)
 	if err != nil {
