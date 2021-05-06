@@ -1,12 +1,19 @@
 package files
 
 import (
+	"bytes"
 	"github.com/afosto/cli/pkg/auth"
 	"github.com/afosto/cli/pkg/client"
+	"github.com/afosto/cli/pkg/data"
 	"github.com/afosto/cli/pkg/logging"
 	"github.com/gen2brain/dlgs"
 	"github.com/spf13/cobra"
+	"io"
+	"net/url"
 	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 )
 
 func download(cmd *cobra.Command, args []string) {
@@ -40,19 +47,70 @@ func download(cmd *cobra.Command, args []string) {
 	if err != nil {
 		logging.Log.Fatal(err)
 	}
+	destination = strings.TrimRight(destination, "/")
 
-	if _, err := os.Stat(destination); os.IsExist(err) {
+	if _, err := os.Stat(destination); os.IsNotExist(err) {
 		err := os.Mkdir(destination, 0755)
 		if err != nil {
-			logging.Log.Fatal("Destination path does not yet exist and could not create it")
+			logging.Log.Fatal("Destination path [" + destination + "] does not yet exist and could not create it")
 		}
 	}
 
-	files, err := ac.ListDirectory(source)
-	if err != nil {
-		logging.Log.Fatal(err)
+	downloadQueue := make(chan data.File, 10)
+	var wg sync.WaitGroup
+	go downloadHandler(downloadQueue, ac, destination, &wg)
+
+	cursor := ""
+	var files []data.File
+	for {
+		files, cursor, err = ac.ListDirectory(source, cursor)
+		if err != nil {
+			logging.Log.Fatal(err)
+		}
+		for _, file := range files {
+			wg.Add(1)
+			downloadQueue <- file
+		}
+		if len(files) < 25 {
+			break
+		}
 	}
+	wg.Wait()
 
-	logging.Log.Info(files)
+	logging.Log.Infof("✔ Downloaded all files from `%s` to `%s`", source, destination)
 
+}
+
+func downloadHandler(downloadQueue <-chan data.File, ac *client.AfostoClient, destination string, wg *sync.WaitGroup) {
+	for file := range downloadQueue {
+		go func(file data.File, wg *sync.WaitGroup) {
+			u, err := url.Parse(file.Url)
+			if err != nil {
+				logging.Log.Error(err)
+
+			}
+			b, err := ac.Download(u)
+			logging.Log.Infof("✔ Downloaded `%s` on from `%s`", file.Filename, file.Url)
+			path := destination + "/" + file.Dir + "/" + file.Filename
+			targetPath := filepath.Dir(path)
+			if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+				err := os.Mkdir(targetPath, 0755)
+				if err != nil {
+					logging.Log.Error("Destination path does not yet exist and could not create it")
+
+				}
+			}
+			out, err := os.Create(path)
+			if err != nil {
+				logging.Log.Error(err)
+			}
+			defer out.Close()
+			_, err = io.Copy(out, bytes.NewReader(b))
+			if err != nil {
+				logging.Log.Error(err)
+			}
+			wg.Done()
+		}(file, wg)
+
+	}
 }

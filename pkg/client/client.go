@@ -71,7 +71,7 @@ func GetClient(tenantID string, accessToken string) *AfostoClient {
 			c:           cache.New(time.Minute*5, time.Minute),
 		}
 		cl.client = &http.Client{
-			Timeout: time.Second * 5,
+			Timeout: time.Second * 10,
 			Transport: &tripper{
 				accessToken: accessToken,
 				tenantID:    tenantID,
@@ -86,7 +86,11 @@ func GetClient(tenantID string, accessToken string) *AfostoClient {
 func (ac *AfostoClient) GetTenant() (*data.Tenant, error) {
 	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/%s", BaseApiUrl, "iam/tenants/"+ac.tenantID), nil)
 	var tenant data.Tenant
-	_ = json.Unmarshal(mustHandle(ac.client.Do(req)), &tenant)
+	b, _, err := handle(ac.client.Do(req))
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(b, &tenant)
 
 	return &tenant, nil
 
@@ -116,7 +120,11 @@ func (ac *AfostoClient) GetSignature(dir string, method string) (string, error) 
 		req, _ := http.NewRequest("POST", fmt.Sprintf("%s/%s", BaseApiUrl, "cnt/files/signature"), jsonPayload(signatureRequest))
 		req.Header.Set("content-type", "application/json")
 		var signatureResponse data.Signature
-		_ = json.Unmarshal(mustHandle(ac.client.Do(req)), &signatureResponse)
+		b, _, err := handle(ac.client.Do(req))
+		if err != nil {
+			return "", err
+		}
+		_ = json.Unmarshal(b, &signatureResponse)
 
 		signature = signatureResponse.Signature
 		ac.c.Set(tenant.ID+dir, signature, cache.DefaultExpiration)
@@ -127,13 +135,26 @@ func (ac *AfostoClient) GetSignature(dir string, method string) (string, error) 
 	return signature, nil
 }
 
-func (ac *AfostoClient) ListDirectory(dir string) ([]data.File, error) {
+func (ac *AfostoClient) ListDirectory(dir string, cursor string) ([]data.File, string, error) {
+
 	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/%s", BaseApiUrl, "cnt/files?dir="+dir), nil)
+	if cursor != "" {
+		req.Header.Set("x-page", cursor)
+	}
+	req.Header.Set("x-page-size", "25")
 	files := []data.File{}
+	b, headers, err := handle(ac.client.Do(req))
+	if err != nil {
+		return nil, "", err
+	}
+	_ = json.Unmarshal(b, &files)
 
-	_ = json.Unmarshal(mustHandle(ac.client.Do(req)), &files)
+	var cursorResponse string
+	if v, ok := headers["X-Page"]; ok {
+		cursorResponse = v[0]
+	}
 
-	return files, nil
+	return files, cursorResponse, nil
 }
 
 func (ac *AfostoClient) Upload(sourceFilePath string, labelFilename string, signature string) (*data.File, error) {
@@ -158,13 +179,23 @@ func (ac *AfostoClient) Upload(sourceFilePath string, labelFilename string, sign
 	req.Header.Set("content-type", writer.FormDataContentType())
 
 	var fileResponse []data.File
-	_ = json.Unmarshal(mustHandle(ac.client.Do(req)), &fileResponse)
+	b, _, err := handle(ac.client.Do(req))
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(b, &fileResponse)
 
 	if len(fileResponse) > 0 {
 		return &fileResponse[0], nil
 	}
 
 	return nil, errors.New("got wrong response")
+}
+
+func (ac *AfostoClient) Download(url *url.URL) ([]byte, error) {
+	req, _ := http.NewRequest("GET", url.String(), nil)
+	b, _, err := handle(ac.client.Do(req))
+	return b, err
 
 }
 
@@ -176,7 +207,11 @@ func (ac *AfostoClient) Query(query string, parameters interface{}) (*QueryResul
 	}))
 
 	var result QueryResult
-	_ = json.Unmarshal(mustHandle(ac.client.Do(req)), &result)
+	b, _, err := handle(ac.client.Do(req))
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(b, &result)
 
 	return &result, nil
 
@@ -197,11 +232,16 @@ func jsonPayload(payload interface{}) *bytes.Reader {
 	return bytes.NewReader(b)
 }
 
-func mustHandle(res *http.Response, err error) []byte {
+func handle(res *http.Response, err error) ([]byte, map[string][]string, error) {
 	defer res.Body.Close()
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		logging.Log.Fatal(err)
+		return nil, nil, err
 	}
-	return b
+	headers := map[string][]string{}
+	for key, values := range res.Header {
+		headers[key] = values
+	}
+
+	return b, headers, nil
 }
