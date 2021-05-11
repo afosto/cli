@@ -2,11 +2,13 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/afosto/cli/pkg/client"
 	"github.com/afosto/cli/pkg/data"
 	"github.com/afosto/cli/pkg/logging"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/browser"
+	"io/ioutil"
 	"net/http"
 	"sync"
 )
@@ -27,6 +29,21 @@ func GetUser() *data.User {
 	return user
 }
 
+func LoadFromStorage() *data.User {
+	if data2, err := ioutil.ReadFile("user.json"); err == nil {
+		loadedUser := data.User{}
+		if err := json.Unmarshal(data2, &loadedUser); err == nil {
+			claims := jwt.StandardClaims{}
+			parser := jwt.Parser{}
+			parser.ParseUnverified(loadedUser.GetAccessToken(), &claims)
+			if err := claims.Valid(); err == nil {
+				return &loadedUser
+			}
+		}
+	}
+	return nil
+}
+
 func GetImplicitUser(permissions []string) *data.User {
 	err := browser.OpenURL(client.GetAuthorizationURL(permissions))
 	if err != nil {
@@ -38,6 +55,10 @@ func GetImplicitUser(permissions []string) *data.User {
 	resource.await()
 
 	user = resource.user
+
+	if userData, err := json.Marshal(user); err == nil {
+		_ = ioutil.WriteFile("user.json", userData, 0644)
+	}
 	return user
 
 }

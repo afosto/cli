@@ -29,6 +29,11 @@ func GetCommands() []*cobra.Command {
 
 func Render(cmd *cobra.Command, args []string) {
 	user := auth.GetUser()
+
+	if user == nil {
+		user = auth.LoadFromStorage()
+	}
+
 	if user == nil {
 		user = auth.GetImplicitUser([]string{
 			"openid",

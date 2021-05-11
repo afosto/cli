@@ -71,7 +71,7 @@ func GetClient(tenantID string, accessToken string) *AfostoClient {
 			c:           cache.New(time.Minute*5, time.Minute),
 		}
 		cl.client = &http.Client{
-			Timeout: time.Second * 10,
+			Timeout: time.Second * 30,
 			Transport: &tripper{
 				accessToken: accessToken,
 				tenantID:    tenantID,
@@ -157,6 +157,33 @@ func (ac *AfostoClient) ListDirectory(dir string, cursor string) ([]data.File, s
 	return files, cursorResponse, nil
 }
 
+func (ac *AfostoClient) ListDirectories(dir string) ([]string, error) {
+
+	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/%s", BaseApiUrl, "cnt/directories"), nil)
+
+	directories := struct {
+		Directories []string `json:"directories"`
+	}{}
+
+	resp, err := ac.client.Do(req)
+
+	_ = resp
+	b, _, err := handle(resp, err)
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(b, &directories)
+
+	list := []string{}
+
+	for _, directory := range directories.Directories {
+		if strings.HasPrefix(directory, dir) {
+			list = append(list, directory)
+		}
+	}
+	return list, nil
+}
+
 func (ac *AfostoClient) Upload(sourceFilePath string, labelFilename string, signature string) (*data.File, error) {
 	file, err := os.Open(sourceFilePath)
 	if err != nil {
@@ -233,6 +260,10 @@ func jsonPayload(payload interface{}) *bytes.Reader {
 }
 
 func handle(res *http.Response, err error) ([]byte, map[string][]string, error) {
+	if err != nil {
+		return nil, nil, err
+	}
+
 	defer res.Body.Close()
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {

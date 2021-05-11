@@ -48,6 +48,11 @@ func GetCommands() []*cobra.Command {
 
 func upload(cmd *cobra.Command, args []string) {
 	user := auth.GetUser()
+
+	if user == nil {
+		user = auth.LoadFromStorage()
+	}
+
 	if user == nil {
 		user = auth.GetImplicitUser([]string{
 			"openid",
