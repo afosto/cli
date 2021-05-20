@@ -42,6 +42,7 @@ func GetCommands() []*cobra.Command {
 
 	downloadCmd.Flags().StringP("source", "s", "", "")
 	downloadCmd.Flags().StringP("destination", "d", "", "")
+	downloadCmd.Flags().BoolP("private", "p", true, "")
 
 	return []*cobra.Command{uploadCmd, downloadCmd}
 }
@@ -95,27 +96,28 @@ func upload(cmd *cobra.Command, args []string) {
 		destination = enteredDestination
 	}
 
+	destination = strings.TrimRight(destination, "/") + "/"
+
 	queue := make(chan string, 25)
 	uploader := sync.WaitGroup{}
 	matcher := regexp.MustCompile(".*(jpe?g|png|svg|css|csv|js|txt|doc|eot|json|xls|xlsx|pdf|xml|mp4|mov|zip|md)$")
 	uploader.Add(1)
 	for i := 0; i < runtime.NumCPU(); i++ {
-		go func() {
+		go func(group *sync.WaitGroup) {
 			for path := range queue {
+				relativePath, err := filepath.Rel(source, path)
 
-				trimmedPath := path
-				if idx := strings.LastIndex(trimmedPath, "/"); idx != -1 {
-					trimmedPath = trimmedPath[0 : idx+1]
+				if err != nil {
+					logging.Log.Errorf("✗ failed to upload  `%s`", path, err)
 				}
 
-				relativePath := strings.TrimLeft(trimmedPath, source)
-				replacer := strings.NewReplacer("//", "/")
-				destinationDir := replacer.Replace(strings.Join([]string{destination, relativePath}, "/"))
+				destinationPath := filepath.Dir(destination + relativePath)
 
-				signature, err := ac.GetSignature(destinationDir, "upsert")
+				uploadAsPrivateFile, _ := cmd.Flags().GetBool("private")
+				signature, err := ac.GetSignature(destinationPath, "upsert", uploadAsPrivateFile)
 				if err != nil {
-					logging.Log.Warnf("✗ failed to get a signature url for  `%s`", destinationDir)
-					return
+					logging.Log.Warnf("✗ failed to get a signature url for  `%s`", filepath.Dir(destinationPath))
+
 				}
 
 				file, err := ac.Upload(path, filepath.Base(path), signature)
@@ -124,10 +126,10 @@ func upload(cmd *cobra.Command, args []string) {
 				} else {
 					logging.Log.Infof("✔ Uploaded `%s` on url `%s`", file.Filename, file.Url)
 				}
-				uploader.Done()
+				group.Done()
 			}
 
-		}()
+		}(&uploader)
 	}
 
 	err = filepath.Walk(source,

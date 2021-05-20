@@ -96,7 +96,7 @@ func (ac *AfostoClient) GetTenant() (*data.Tenant, error) {
 
 }
 
-func (ac *AfostoClient) GetSignature(dir string, method string) (string, error) {
+func (ac *AfostoClient) GetSignature(dir string, method string, asPrivateDirectory bool) (string, error) {
 	tenant, err := ac.GetTenant()
 	if err != nil {
 		return "", err
@@ -111,7 +111,7 @@ func (ac *AfostoClient) GetSignature(dir string, method string) (string, error) 
 			Method   string            `json:"method"`
 			Metadata map[string]string `json:"metadata"`
 		}{
-			IsPublic: false,
+			IsPublic: !asPrivateDirectory,
 			IsListed: true,
 			Path:     dir,
 			Method:   method,
