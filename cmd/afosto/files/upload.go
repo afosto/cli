@@ -101,7 +101,6 @@ func upload(cmd *cobra.Command, args []string) {
 	queue := make(chan string, 25)
 	uploader := sync.WaitGroup{}
 	matcher := regexp.MustCompile(".*(jpe?g|png|svg|css|csv|js|txt|doc|eot|json|xls|xlsx|pdf|xml|mp4|mov|zip|md)$")
-	uploader.Add(1)
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go func(group *sync.WaitGroup) {
 			for path := range queue {
