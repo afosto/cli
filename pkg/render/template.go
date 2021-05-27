@@ -164,9 +164,12 @@ func (ds *developmentServer) render(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 
-		logging.Log.WithField("input", entry.TemplatePath).Debug("rendering template entry")
+		mimeType := "text/html"
 
-		w.Header().Set("content-type", "text/html")
+		if entry.MimeType != "" {
+			mimeType = entry.MimeType
+		}
+		logging.Log.WithField("input", entry.TemplatePath).Debug("rendering template entry")
 
 		defer func() {
 			if r := recover(); r != nil {
@@ -174,11 +177,23 @@ func (ds *developmentServer) render(w http.ResponseWriter, req *http.Request) {
 			}
 		}()
 
-		err = tpl.ExecuteWriter(templateData, w)
+		content, err := tpl.Execute(templateData)
 		if err != nil {
 			logging.Log.Error(err)
 			return
 		}
+
+		if mimeType == "application/json" {
+			var stub interface{}
+			if err := json.Unmarshal([]byte(content), stub); err != nil {
+				w.WriteHeader(400)
+				w.Write([]byte(err.Error()))
+				return
+			}
+		}
+
+		w.Header().Set("content-type", mimeType)
+		w.Write([]byte(content))
 	} else {
 		logging.Log.WithField("entry", p).Error("could not find entrypoint")
 		w.WriteHeader(404)

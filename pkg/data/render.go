@@ -23,6 +23,7 @@ type Route struct {
 	Category      string  `yaml:"-"`
 	InlineCss     bool    `yaml:"inlineCss"`
 	TemplatePath  string  `yaml:"templatePath"`
+	MimeType      string  `yaml:"mimetype"`
 	QueryPath     *string `yaml:"queryPath"`
 	Vars          map[string]interface{}
 	ResolvedQuery *string
