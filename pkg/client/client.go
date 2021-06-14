@@ -59,7 +59,7 @@ type QueryError struct {
 }
 
 func GetAuthorizationURL(scopes []string) string {
-	return fmt.Sprintf("%s?client_id=%s&redirect_uri=%s&response_type=token+id_token&scope=%s",
+	return fmt.Sprintf("%s?client_id=%s&redirect_uri=%s&response_type=token+id_token&scope=%s&silent=1",
 		BaseAuthorizationURL, OauthClientID, url.QueryEscape(RedirectURL), url.QueryEscape(strings.Join(scopes, " ")))
 }
 
