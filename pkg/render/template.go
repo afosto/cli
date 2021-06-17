@@ -14,7 +14,6 @@ import (
 	"gopkg.in/yaml.v2"
 	"html/template"
 	"io/ioutil"
-	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -195,9 +194,12 @@ func (ds *developmentServer) render(w http.ResponseWriter, req *http.Request) {
 				w.Write([]byte(content))
 				return
 			}
+
+			w.Header().Set("Content-Type", "application/json")
+		} else {
+			w.Header().Set("content-type", "text/html")
 		}
 
-		w.Header().Set("Content-Type", mime.TypeByExtension(fmt.Sprintf(".%s", outputType)))
 		w.Write([]byte(content))
 	} else {
 		logging.Log.WithField("entry", p).Error("could not find entrypoint")
