@@ -28,6 +28,7 @@ The current list for features for this CLI tool is as follows:
 - upload a local directory to your account
 - download a remote directory (from your account) to your machine
 - develop HTML templates 
+- develop JSON templates
 
 To start local development of templates, run: 
 
@@ -60,9 +61,24 @@ afosto render -p 8888 -f afosto.config.yml
 
 Where `-p` is the port number for the local webserver and `-f` points to the afosto.config.yml file in the root of the template repository.
 
+### Develop JSON templates
+By default, the render process assumes you're rendering HTML templates.
+If you want to render JSON templates instead, you have to add an extra key in your config file:
+
+```yaml
+config:
+  - category: templates
+    routes:
+      - path: jsonTemplate
+        output: json # The required key for JSON templates
+        templatePath: path/to/your/template.tpl
+        queryPath: path/to/your/query.graphql
+```
+
 ### Templating language
 
-Within the templates that are rendered there a some (hidden) powerful features / filters that might be of use. 
+[Pongo2](https://github.com/flosch/pongo2) is used as the templating languages.
+Within the templates there are a few (hidden) powerful features / filters that might be useful.
 
 #### Sort
 
@@ -73,5 +89,3 @@ Sort takes in a slice or a map and sort this based on a key. Start with `-` in o
 {{slice|sort:"-filters.key"}}
 ``` 
 
- 
- 

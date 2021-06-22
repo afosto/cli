@@ -233,6 +233,8 @@ func (ac *AfostoClient) Query(query string, parameters interface{}) (*QueryResul
 		Variables:     parameters,
 	}))
 
+	req.Header.Set("content-type", "application/json")
+
 	var result QueryResult
 	b, _, err := handle(ac.client.Do(req))
 	if err != nil {
