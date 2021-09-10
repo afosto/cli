@@ -112,6 +112,8 @@ func upload(cmd *cobra.Command, args []string) {
 
 				destinationPath := filepath.Dir(destination + relativePath)
 
+				//replace path for windows
+				destinationPath = strings.ReplaceAll(destinationPath, "\\", "/")
 				uploadAsPrivateFile, _ := cmd.Flags().GetBool("private")
 				signature, err := ac.GetSignature(destinationPath, "upsert", uploadAsPrivateFile)
 				if err != nil {

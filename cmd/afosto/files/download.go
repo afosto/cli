@@ -5,6 +5,7 @@ import (
 	"github.com/afosto/cli/pkg/client"
 	"github.com/afosto/cli/pkg/data"
 	"github.com/afosto/cli/pkg/logging"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/gen2brain/dlgs"
 	"github.com/spf13/cobra"
 	"io/ioutil"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 func download(cmd *cobra.Command, args []string) {
@@ -71,10 +73,25 @@ func download(cmd *cobra.Command, args []string) {
 
 	go downloadHandler(downloadQueue, ac, source, destination, &wg)
 	logging.Log.Infof("✔ Started listing Directories`")
-	directories, err := ac.ListDirectories(source)
-	if err != nil {
+
+	b := backoff.NewExponentialBackOff()
+	b.MaxElapsedTime = time.Second * 600
+	b.MaxInterval = time.Second * 50
+
+	var directories = []string{}
+
+	if err := backoff.RetryNotify(func() error {
+		var err error
+		directories, err = ac.ListDirectories(source)
+
+		return err
+
+	}, backoff.WithMaxRetries(b, 5), func(err error, duration time.Duration) {
+		logging.Log.WithField("retrying in", duration).Warn(err)
+	}); err != nil {
 		logging.Log.Fatal(err)
 	}
+
 	logging.Log.Infof("✔ Finished listing directories`")
 
 	for _, directory := range directories {
