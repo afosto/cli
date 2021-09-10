@@ -27,6 +27,7 @@ func download(cmd *cobra.Command, args []string) {
 			"email",
 			"profile",
 			"cnt:files:read",
+			"cnt:files:write",
 		})
 	}
 
@@ -36,10 +37,21 @@ func download(cmd *cobra.Command, args []string) {
 	if err != nil {
 		logging.Log.Fatal(err)
 	}
+	if source == "" {
+		selectedSource, ok, err := dlgs.Entry("enter the path to download", "enter the path to download", "/uploads/")
+
+		if err != nil {
+			logging.Log.Fatal(err)
+		}
+		if !ok {
+			logging.Log.Fatal("failed to select a directory")
+		}
+		source = selectedSource
+	}
+
 	source = strings.Trim(source, "/")
 
 	destination, err := cmd.Flags().GetString("destination")
-
 	if destination == "" {
 		selectedDestination, ok, err := dlgs.File("Select the download directory", "", true)
 		if err != nil {
