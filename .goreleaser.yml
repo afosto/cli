@@ -12,11 +12,6 @@ builds:
       - linux
       - windows
       - darwin
-    ignore:
-      - goos: windows
-        goarch: arm64
-      - goos: darwin
-        goarch: arm64
 
 archives:
   - replacements:
