@@ -6,8 +6,6 @@ builds:
   - id: afosto
     main: ./cmd/afosto/afosto.go
     binary: afosto
-    env:
-      - CGO_ENABLED=0
     goos:
       - linux
       - windows
