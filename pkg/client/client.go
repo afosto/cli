@@ -154,32 +154,38 @@ func (ac *AfostoClient) GetSignature(dir string, method string, asPrivateDirecto
 
 func (ac *AfostoClient) ListDirectory(dir string, cursor string) ([]data.File, string, error) {
 
-	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/%s", BaseApiUrl, "cnt/files?dir="+dir), nil)
+	requestUrl := fmt.Sprintf("%s/%s?filter[dir][eq]=%s&page[size]=%d", BaseApiUrl, "storage/files", dir, 25)
+
 	if cursor != "" {
-		req.Header.Set("x-page", cursor)
+
+		requestUrl = requestUrl + "&page[after]=" + cursor
 	}
-	req.Header.Set("x-page-size", "25")
-	files := []data.File{}
-	b, headers, err := handle(ac.client.Do(req))
+
+	req, _ := http.NewRequest("GET", requestUrl, nil)
+
+	response := struct {
+		Data []data.File `json:"data"`
+		Page struct {
+			After string `json:"after"`
+		} `json:"page"`
+	}{}
+
+	b, _, err := handle(ac.client.Do(req))
 	if err != nil {
 		return nil, "", err
 	}
-	_ = json.Unmarshal(b, &files)
 
-	var cursorResponse string
-	if v, ok := headers["X-Page"]; ok {
-		cursorResponse = v[0]
-	}
+	_ = json.Unmarshal(b, &response)
 
-	return files, cursorResponse, nil
+	return response.Data, response.Page.After, nil
 }
 
 func (ac *AfostoClient) ListDirectories(dir string) ([]string, error) {
 
-	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/%s", BaseApiUrl, "cnt/directories"), nil)
+	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/%s", BaseApiUrl, "storage/directories"), nil)
 
 	directories := struct {
-		Directories []string `json:"directories"`
+		Directories []string `json:"data"`
 	}{}
 
 	resp, err := ac.client.Do(req)
@@ -194,7 +200,7 @@ func (ac *AfostoClient) ListDirectories(dir string) ([]string, error) {
 	list := []string{}
 
 	for _, directory := range directories.Directories {
-		if strings.HasPrefix(directory, dir) {
+		if strings.HasPrefix(directory, "/"+dir) {
 			list = append(list, directory)
 		}
 	}
@@ -212,6 +218,7 @@ func (ac *AfostoClient) Upload(sourceFilePath string, labelFilename string, sign
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", labelFilename)
+
 	if err != nil {
 		logging.Log.Error(err)
 		return nil, err
@@ -228,9 +235,11 @@ func (ac *AfostoClient) Upload(sourceFilePath string, labelFilename string, sign
 
 	var fileResponse response
 	b, _, err := handle(ac.client.Do(req))
+
 	if err != nil {
 		return nil, err
 	}
+
 	_ = json.Unmarshal(b, &fileResponse)
 
 	if len(fileResponse.Data) > 0 {

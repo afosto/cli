@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func download(cmd *cobra.Command, args []string) {
+func download(cmd *cobra.Command, _ []string) {
 	user := auth.GetUser()
 
 	if user == nil {
@@ -98,7 +98,7 @@ func download(cmd *cobra.Command, args []string) {
 		var files []data.File
 		cursor := ""
 		for {
-			files, cursor, err = ac.ListDirectory(strings.TrimRight(directory, "/"), cursor)
+			files, cursor, err = ac.ListDirectory(strings.TrimLeft(directory, "/"), cursor)
 			if err != nil {
 				logging.Log.Fatal(err)
 			}
