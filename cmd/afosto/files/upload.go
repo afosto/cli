@@ -18,35 +18,6 @@ import (
 
 var _ io.Reader = (*os.File)(nil)
 
-func GetCommands() []*cobra.Command {
-	uploadCmd := &cobra.Command{
-		Use:   "upload",
-		Short: "Upload files",
-
-		Long: `Upload files to Afosto file storage`,
-		Run: func(cmd *cobra.Command, args []string) {
-			upload(cmd, args)
-		}}
-
-	uploadCmd.Flags().StringP("source", "s", "", "")
-	uploadCmd.Flags().StringP("destination", "d", "", "")
-
-	downloadCmd := &cobra.Command{
-		Use:   "download",
-		Short: "Download files",
-
-		Long: `Download files from Afosto file storage`,
-		Run: func(cmd *cobra.Command, args []string) {
-			download(cmd, args)
-		}}
-
-	downloadCmd.Flags().StringP("source", "s", "", "")
-	downloadCmd.Flags().StringP("destination", "d", "", "")
-	downloadCmd.Flags().BoolP("private", "p", true, "")
-
-	return []*cobra.Command{uploadCmd, downloadCmd}
-}
-
 func upload(cmd *cobra.Command, args []string) {
 	user := auth.GetUser()
 
@@ -118,12 +89,11 @@ func upload(cmd *cobra.Command, args []string) {
 				signature, err := ac.GetSignature(destinationPath, "upsert", uploadAsPrivateFile)
 				if err != nil {
 					logging.Log.Warnf("✗ failed to get a signature url for  `%s`", filepath.Dir(destinationPath))
-
 				}
 
 				file, err := ac.Upload(path, filepath.Base(path), signature)
 				if err != nil {
-					logging.Log.Errorf("✗ failed to upload  `%s`", path)
+					logging.Log.Errorf("✗ failed to upload `%s`", path)
 				} else {
 					logging.Log.Infof("✔ Uploaded `%s` on url `%s`", file.Filename, file.Url)
 				}

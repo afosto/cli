@@ -1,7 +1,5 @@
 package data
 
-import "time"
-
 type File struct {
 	ID        string            `json:"id"`
 	Filename  string            `json:"filename"`
@@ -13,11 +11,11 @@ type File struct {
 	IsPublic  bool              `json:"is_public"`
 	IsListed  bool              `json:"is_listed"`
 	Metadata  map[string]string `json:"metadata"`
-	CreatedAt time.Time         `json:"created_at"`
-	UpdatedAt time.Time         `json:"updated_at"`
+	CreatedAt int64             `json:"created_at"`
+	UpdatedAt int64             `json:"updated_at"`
 }
 
 type Signature struct {
-	ExpiresAt time.Time `json:"expires_at"`
-	Signature string    `json:"signature"`
+	ExpiresAt int64  `json:"expires_at"`
+	Signature string `json:"signature"`
 }

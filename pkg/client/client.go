@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	BaseAuthorizationURL = "https://login.afosto.io/authorize"
-	BaseApiUrl           = "https://api.afosto.io"
+	BaseAuthorizationURL = "https://afosto.app/auth/authorize"
+	BaseApiUrl           = "https://afosto.app/api"
 	OauthClientID        = "51403354ded11942d7195c66b9e81f71b74f56cd8adc539277823e179da8"
 	RedirectURL          = "http://localhost:8888/return"
 )
@@ -56,6 +56,14 @@ type QueryResult struct {
 type QueryError struct {
 	Message string   `json:"message"`
 	Path    []string `json:"path"`
+}
+
+type SignatureRequest struct {
+	IsPublic bool              `json:"is_public"`
+	Path     string            `json:"path"`
+	IsListed bool              `json:"is_listed"`
+	Method   string            `json:"method"`
+	Metadata map[string]string `json:"metadata"`
 }
 
 func GetAuthorizationURL(scopes []string) string {
@@ -104,29 +112,38 @@ func (ac *AfostoClient) GetSignature(dir string, method string, asPrivateDirecto
 	result, ok := ac.c.Get(tenant.ID + dir)
 	var signature string
 	if !ok {
-		signatureRequest := struct {
-			IsPublic bool              `json:"is_public"`
-			Path     string            `json:"path"`
-			IsListed bool              `json:"is_listed"`
-			Method   string            `json:"method"`
-			Metadata map[string]string `json:"metadata"`
-		}{
-			IsPublic: !asPrivateDirectory,
-			IsListed: true,
-			Path:     dir,
-			Method:   method,
+
+		type request struct {
+			Data SignatureRequest `json:"data"`
 		}
 
-		req, _ := http.NewRequest("POST", fmt.Sprintf("%s/%s", BaseApiUrl, "cnt/files/signature"), jsonPayload(signatureRequest))
+		signatureRequest := request{
+			Data: SignatureRequest{
+				IsPublic: !asPrivateDirectory,
+				IsListed: true,
+				Path:     dir,
+				Method:   method,
+			},
+		}
+
+		req, _ := http.NewRequest("POST", fmt.Sprintf("%s/%s", BaseApiUrl, "storage/files/signature"), jsonPayload(signatureRequest))
 		req.Header.Set("content-type", "application/json")
-		var signatureResponse data.Signature
+
+		type response struct {
+			Data data.Signature `json:"data"`
+		}
+
+		var signatureResponse response
 		b, _, err := handle(ac.client.Do(req))
 		if err != nil {
 			return "", err
 		}
-		_ = json.Unmarshal(b, &signatureResponse)
 
-		signature = signatureResponse.Signature
+		if err := json.Unmarshal(b, &signatureResponse); err != nil {
+			return "", err
+		}
+
+		signature = signatureResponse.Data.Signature
 		ac.c.Set(tenant.ID+dir, signature, cache.DefaultExpiration)
 
 	} else {
@@ -202,18 +219,22 @@ func (ac *AfostoClient) Upload(sourceFilePath string, labelFilename string, sign
 	_, _ = io.Copy(part, file)
 	_ = writer.Close()
 
-	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/%s", BaseApiUrl, "cnt/files/upload/"+signature), body)
+	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/%s", BaseApiUrl, "storage/files/upload/"+signature), body)
 	req.Header.Set("content-type", writer.FormDataContentType())
 
-	var fileResponse []data.File
+	type response struct {
+		Data []data.File `json:"data"`
+	}
+
+	var fileResponse response
 	b, _, err := handle(ac.client.Do(req))
 	if err != nil {
 		return nil, err
 	}
 	_ = json.Unmarshal(b, &fileResponse)
 
-	if len(fileResponse) > 0 {
-		return &fileResponse[0], nil
+	if len(fileResponse.Data) > 0 {
+		return &fileResponse.Data[0], nil
 	}
 
 	return nil, errors.New("got wrong response")
@@ -223,7 +244,6 @@ func (ac *AfostoClient) Download(url *url.URL) ([]byte, error) {
 	req, _ := http.NewRequest("GET", url.String(), nil)
 	b, _, err := handle(ac.client.Do(req))
 	return b, err
-
 }
 
 func (ac *AfostoClient) Query(query string, parameters interface{}) (*QueryResult, error) {

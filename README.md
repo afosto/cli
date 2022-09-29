@@ -40,6 +40,14 @@ afosto upload -s /Users/peter/images -d /images
 ```
 `-s` (source) points to the path on your computer that you want to recursively upload. `-d` (destination) points to the directory in your account.
 
+By default, your files will be uploaded as public files. 
+If you want your files to be private, use the `-p` or `--private` flag, like so: 
+
+```bash
+afosto upload -s /Users/peter/images -d /images -p
+afosto upload -s /Users/peter/images -d /images --private
+```
+
 ## Download files
 
 When you want to download files from your account to your computer you run:
