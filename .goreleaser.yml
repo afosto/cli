@@ -12,10 +12,10 @@ builds:
       - linux
       - windows
       - darwin
-    goarch:
-      - amd64
     ignore:
       - goos: windows
+        goarch: arm64
+      - goos: darwin
         goarch: arm64
 
 archives:
